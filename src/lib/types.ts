@@ -1,12 +1,12 @@
 export interface TruckLog {
-  id: string; // Unique identifier, now manually entered permit number
+  id: string; // Unique identifier, now the epapNumber
   truckNumber: string;
   date: Date;
   product: 'PMS' | 'AGO'; // Restricted product type
   quantity: number; // Added quantity field
   company: string;
-  permitNumber: string; // Manually entered permit number
-  epapNumber: string; // Changed from epraNumber
+  owner: string; // Added owner field
+  epapNumber: string; // EPAP number serves as the unique permit ID
   isPreChecked: boolean; // Status if pre-checked
   preCheckDate: Date | null; // Date when pre-check was done, null if not pre-checked
   isLoaded: boolean; // To stop the expiry timer
@@ -17,13 +17,13 @@ export interface TruckLog {
 
 // Type for adding a log - fields required at creation
 export type AddTruckLogInput = Pick<TruckLog,
-  'permitNumber' |
+  'epapNumber' | // Use epapNumber as the identifier
   'truckNumber' |
   'date' |
   'product' |
   'quantity' |
   'company' |
-  'epapNumber'
+  'owner' // Added owner
 >;
 
 

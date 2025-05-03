@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from "date-fns";
-import { CalendarIcon, Truck, Package, Building, Hash, Droplet, FileText } from 'lucide-react'; // Added/updated icons
+import { CalendarIcon, Truck, Package, Building, Hash, Droplet, FileText, User } from 'lucide-react'; // Added User icon
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,15 +38,15 @@ import { addTruckLogAction } from '@/lib/actions';
 import { cn } from "@/lib/utils";
 import type { TruckLog, AddTruckLogInput } from '@/lib/types'; // Import specific types
 
-// Updated Zod schema for adding a log (manual permit, no pre-check fields)
+// Updated Zod schema for adding a log
 const formSchema = z.object({
-  permitNumber: z.string().min(1, 'Permit number is required'), // Manual Permit Number
+  epapNumber: z.string().min(1, 'EPAP number is required'), // Use EPAP number as the main identifier
   truckNumber: z.string().min(1, 'Truck number is required'),
   date: z.date({ required_error: "Date is required." }),
   product: z.enum(['PMS', 'AGO'], { required_error: "Product is required." }), // Enum for product
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'), // Coerce to number and validate
   company: z.string().min(1, 'Company name is required'),
-  epapNumber: z.string().min(1, 'EPAP number is required'), // Changed from epraNumber
+  owner: z.string().min(1, 'Owner name is required'), // Added owner field
 });
 
 type TruckLogFormValues = z.infer<typeof formSchema>;
@@ -62,13 +62,13 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
   const form = useForm<TruckLogFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      permitNumber: '',
+      epapNumber: '', // Use epapNumber
       truckNumber: '',
       date: new Date(),
       // product: undefined, // No default for select
       quantity: 0,
       company: '',
-      epapNumber: '',
+      owner: '', // Default owner
     },
   });
 
@@ -78,13 +78,13 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
          console.log("Submitting form values:", values);
          // Prepare payload matching AddTruckLogInput type
          const payload: AddTruckLogInput = {
-            permitNumber: values.permitNumber,
+            epapNumber: values.epapNumber, // Use epapNumber
             truckNumber: values.truckNumber,
             date: values.date,
             product: values.product,
             quantity: values.quantity,
             company: values.company,
-            epapNumber: values.epapNumber,
+            owner: values.owner, // Include owner
          };
 
          const result = await addTruckLogAction(payload);
@@ -100,7 +100,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
          } else {
              toast({
                  title: "Success",
-                 description: `Log added for Permit ${result.permitNumber}.`,
+                 description: `Log added for EPAP ${result.epapNumber}.`, // Update toast message
              });
              onLogAdded(result); // Notify parent component
              form.reset(); // Reset form after successful submission
@@ -123,20 +123,20 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-          {/* Permit Number (Manual Input) */}
-           <FormField
-              control={form.control}
-              name="permitNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center"><Hash className="mr-2 h-4 w-4" /> Permit Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter permit number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* EPAP Number */}
+          <FormField
+            control={form.control}
+            name="epapNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center"><FileText className="mr-2 h-4 w-4" /> EPAP Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., EPAP/12345" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Truck Number */}
           <FormField
@@ -147,6 +147,21 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
                 <FormLabel className="flex items-center"><Truck className="mr-2 h-4 w-4" /> Truck Number</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g., KAA 123X" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Owner */}
+           <FormField
+            control={form.control}
+            name="owner"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4" /> Owner</FormLabel>
+                <FormControl>
+                  <Input placeholder="Owner's name" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -249,20 +264,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
             )}
           />
 
-          {/* EPAP Number */}
-          <FormField
-            control={form.control}
-            name="epapNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center"><FileText className="mr-2 h-4 w-4" /> EPAP Number</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., EPAP/12345" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+
 
           {/* Removed Pre-check Checkbox and Date fields */}
 

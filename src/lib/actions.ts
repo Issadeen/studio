@@ -13,29 +13,30 @@ export async function addTruckLogAction(data: AddTruckLogInput): Promise<TruckLo
   console.log('Received data for adding log:', data);
   try {
     // Validate input
-    if (!data.permitNumber) {
-        return { error: "Permit Number is required." };
+    if (!data.epapNumber) {
+        return { error: "EPAP Number is required." };
     }
-    if (truckLogs.some(log => log.id === data.permitNumber)) {
-        return { error: "Permit Number already exists." };
+    if (truckLogs.some(log => log.id === data.epapNumber)) {
+        // Use epapNumber as the unique ID check
+        return { error: "EPAP Number already exists." };
     }
     if (data.quantity <= 0) {
         return { error: "Quantity must be positive." };
     }
-    if (!data.epapNumber) {
-        return { error: "EPAP Number is required." };
+    if (!data.owner) {
+        return { error: "Owner is required." };
     }
 
 
     const newLog: TruckLog = {
-      id: data.permitNumber, // Use provided permit number as ID
+      id: data.epapNumber, // Use epapNumber as the unique ID
       truckNumber: data.truckNumber,
       date: new Date(data.date), // Ensure date is a Date object
       product: data.product,
       quantity: data.quantity,
       company: data.company,
-      permitNumber: data.permitNumber,
-      epapNumber: data.epapNumber,
+      owner: data.owner, // Added owner
+      epapNumber: data.epapNumber, // Still store epapNumber itself
       isPreChecked: false, // Default to not pre-checked
       preCheckDate: null, // Default to null
       isLoaded: false, // Default to not loaded
@@ -51,6 +52,7 @@ export async function addTruckLogAction(data: AddTruckLogInput): Promise<TruckLo
 
     revalidatePath('/'); // Revalidate the page to show the new log
 
+    // Updated success message
     return newLog;
   } catch (error) {
     console.error("Error adding truck log:", error);
@@ -201,13 +203,13 @@ export async function exportTruckLogsAction(): Promise<{ success: boolean; messa
 
    // Example structure (would need actual xlsx logic)
     const dataToExport = truckLogs.map(log => ({
-       'Permit Number': log.permitNumber, // Use as primary ID now
+       'EPAP Number': log.epapNumber, // Use EPAP as primary ID now
        'Truck Number': log.truckNumber,
+       'Owner': log.owner, // Added Owner
        'Date Added': log.date ? new Date(log.date).toLocaleString() : 'N/A',
        'Product': log.product,
        'Quantity (L)': log.quantity,
        'Company': log.company,
-       'EPAP Number': log.epapNumber,
        'Pre-Checked': log.isPreChecked ? 'Yes' : 'No',
        'Pre-Check Date': log.preCheckDate ? new Date(log.preCheckDate).toLocaleString() : 'N/A',
        'Expiry Date': log.expiryDate ? new Date(log.expiryDate).toLocaleString() : 'N/A',
