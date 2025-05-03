@@ -1,14 +1,15 @@
+// truck-log-list.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { TruckLog, MarkAsPreCheckedInput, MarkAsLoadedInput } from '@/lib/types';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { TruckLog, MarkAsPreCheckedInput, MarkAsLoadedInput } from '@/lib/types';
 import { format, differenceInHours, differenceInMinutes, differenceInSeconds } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Truck, Package, Building, CalendarDays, Clock, CheckCircle, XCircle, Hourglass, AlertTriangle, Loader, Droplet, FileText, FileInput, ClipboardCheck, CalendarIcon, User, Warehouse } from 'lucide-react'; // Added User, Warehouse icons
+import { Truck, Package, Building, CalendarDays, Clock, CheckCircle, XCircle, Hourglass, AlertTriangle, Loader, Droplet, FileText, FileInput, ClipboardCheck, CalendarIcon, User, Warehouse, Search } from 'lucide-react'; // Added Search icon
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from '@/components/ui/calendar';
@@ -343,6 +344,7 @@ const MarkLoadedModal: React.FC<{
 // --- Main Truck Log List Component ---
 export function TruckLogList({ initialLogs }: TruckLogListProps) {
    const [logs, setLogs] = useState<TruckLog[]>(initialLogs);
+   const [searchTerm, setSearchTerm] = useState('');
    // Use a single state object to track loading for different actions per log
    const [loadingStates, setLoadingStates] = useState<Record<string, { preCheck?: boolean; load?: boolean }>>({});
    const { toast } = useToast();
@@ -356,6 +358,22 @@ export function TruckLogList({ initialLogs }: TruckLogListProps) {
            expiryDate: log.expiryDate ? new Date(log.expiryDate) : null,
        })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())); // Keep sorted
    }, [initialLogs]);
+
+   // Filter logs based on search term
+   const filteredLogs = useMemo(() => {
+       if (!searchTerm) {
+           return logs;
+       }
+       const lowerCaseSearchTerm = searchTerm.toLowerCase();
+       return logs.filter(log =>
+           log.truckNumber.toLowerCase().includes(lowerCaseSearchTerm) ||
+           log.epapNumber.toLowerCase().includes(lowerCaseSearchTerm) ||
+           log.owner.toLowerCase().includes(lowerCaseSearchTerm) ||
+           log.company.toLowerCase().includes(lowerCaseSearchTerm) ||
+           log.depot.toLowerCase().includes(lowerCaseSearchTerm)
+       );
+   }, [logs, searchTerm]);
+
 
    // Helper to update loading state for a specific action on a log
    const setLoading = (logId: string, action: 'preCheck' | 'load', isLoading: boolean) => {
@@ -419,7 +437,7 @@ export function TruckLogList({ initialLogs }: TruckLogListProps) {
       }
    };
 
-   if (!logs || logs.length === 0) {
+   if (!initialLogs || initialLogs.length === 0) {
      return <Alert className="mt-6">
               <Truck className="h-4 w-4"/>
               <AlertTitle>No Logs Yet</AlertTitle>
@@ -431,100 +449,122 @@ export function TruckLogList({ initialLogs }: TruckLogListProps) {
 
   return (
     <div className="space-y-4 mt-8">
-       <h2 className="text-2xl font-semibold tracking-tight">Trucking Monitor</h2>
-      {logs.map((log) => {
-        const isExpired = log.isPreChecked && log.expiryDate && new Date() > new Date(log.expiryDate);
-        const canMarkPreChecked = !log.isPreChecked && !log.isLoaded;
-        const canMarkLoaded = log.isPreChecked && !isExpired && !log.isLoaded;
-        const isLoadingPreCheck = loadingStates[log.id]?.preCheck ?? false;
-        const isLoadingLoad = loadingStates[log.id]?.load ?? false;
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+           <h2 className="text-2xl font-semibold tracking-tight">Trucking Monitor</h2>
+           <div className="relative w-full sm:w-64">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+             <Input
+               type="search"
+               placeholder="Search trucks, EPAP, owner..."
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="pl-10"
+               suppressHydrationWarning
+             />
+           </div>
+        </div>
+        {filteredLogs.length === 0 && searchTerm && (
+             <Alert>
+                 <Search className="h-4 w-4"/>
+                 <AlertTitle>No Results Found</AlertTitle>
+                 <AlertDescription>
+                 Your search for "{searchTerm}" did not match any truck logs. Try different keywords.
+                 </AlertDescription>
+             </Alert>
+        )}
+        {filteredLogs.map((log) => {
+            const isExpired = log.isPreChecked && log.expiryDate && new Date() > new Date(log.expiryDate);
+            const canMarkPreChecked = !log.isPreChecked && !log.isLoaded;
+            const canMarkLoaded = log.isPreChecked && !isExpired && !log.isLoaded;
+            const isLoadingPreCheck = loadingStates[log.id]?.preCheck ?? false;
+            const isLoadingLoad = loadingStates[log.id]?.load ?? false;
 
-        return (
-            <Card key={log.id} className={`shadow-md ${log.isLoaded ? 'opacity-70' : ''}`}>
-            <CardHeader className="pb-3">
-                <div className="flex justify-between items-start gap-2">
-                    <div>
-                        <CardTitle className="flex items-center text-xl"><Truck className="mr-2 h-5 w-5 text-primary" /> {log.truckNumber}</CardTitle>
-                         <CardDescription>
-                             EPAP: <Badge variant="secondary">{log.epapNumber}</Badge> | Owner: <Badge variant="outline">{log.owner}</Badge>
-                         </CardDescription>
-                    </div>
-                    <Badge variant={log.isLoaded ? "default" : isExpired ? "destructive" : log.isPreChecked ? "outline" : "secondary"} className="whitespace-nowrap flex-shrink-0">
-                    {log.isLoaded ? "Loaded" : isExpired ? "Pre-Check Expired" : log.isPreChecked ? "Pre-Checked" : "Pending Pre-Check"}
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-                    <div className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Date Added:</strong> <span className="ml-1">{format(new Date(log.date), 'PPP')}</span></div>
-                    <div className="flex items-center"><Package className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Product:</strong> <span className="ml-1">{log.product}</span></div>
-                    <div className="flex items-center"><Droplet className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Quantity:</strong> <span className="ml-1">{log.quantity.toLocaleString()} L</span></div>
-                    <div className="flex items-center sm:col-span-2 lg:col-span-1"><Building className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Company:</strong> <span className="ml-1">{log.company}</span></div>
-                     <div className="flex items-center sm:col-span-2 lg:col-span-1"><User className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Owner:</strong> <span className="ml-1">{log.owner}</span></div>
-                     <div className="flex items-center sm:col-span-2 lg:col-span-1"><Warehouse className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Depot:</strong> <span className="ml-1">{log.depot}</span></div>
-                    {log.isPreChecked && log.preCheckDate && (
-                        <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Pre-Checked:</strong> <span className="ml-1">{format(new Date(log.preCheckDate), 'PPP HH:mm')}</span></div>
-                    )}
-                     {/* Display AT2O and BOL if loaded */}
-                    {log.isLoaded && log.at2oNumber && (
-                         <div className="flex items-center"><FileText className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>AT2O No:</strong> <span className="ml-1">{log.at2oNumber}</span></div>
-                    )}
-                    {log.isLoaded && log.bolNumber && (
-                        <div className="flex items-center"><FileInput className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>BOL No:</strong> <span className="ml-1">{log.bolNumber}</span></div>
-                    )}
-                </div>
-
-                {/* Show Countdown only if Pre-checked */}
-                {log.isPreChecked && log.expiryDate && (
-                    <ExpiryCountdown
-                        expiryDate={new Date(log.expiryDate)}
-                        isLoaded={log.isLoaded}
-                        preCheckDate={log.preCheckDate ? new Date(log.preCheckDate) : null}
-                     />
-                )}
-                 {!log.isPreChecked && !log.isLoaded && (
-                     <div className="flex items-center text-orange-600 dark:text-orange-400 pt-2 text-sm">
-                        <Hourglass className="mr-2 h-4 w-4" /> Awaiting pre-check information.
-                    </div>
-                 )}
-
-                <div className="flex items-center gap-2 pt-3 border-t mt-4">
-                    {/* Mark as Pre-Checked Button */}
-                    {canMarkPreChecked && (
-                         <MarkPreCheckedModal
-                            logId={log.id}
-                            truckNumber={log.truckNumber}
-                            onConfirm={handleMarkPreChecked}
-                            isLoading={isLoadingPreCheck}
-                        />
-                    )}
-
-                    {/* Mark as Loaded Button */}
-                    {canMarkLoaded && (
-                        <MarkLoadedModal
-                            logId={log.id}
-                            truckNumber={log.truckNumber}
-                            onConfirm={handleMarkLoaded}
-                            isLoading={isLoadingLoad}
-                        />
-                    )}
-                     {/* Display status messages */}
-                     {log.isLoaded && (
-                        <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
-                            <CheckCircle className="mr-2 h-4 w-4" /> Truck successfully loaded.
+            return (
+                <Card key={log.id} className={`shadow-md ${log.isLoaded ? 'opacity-70' : ''}`}>
+                    <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start gap-2">
+                            <div>
+                                <CardTitle className="flex items-center text-xl"><Truck className="mr-2 h-5 w-5 text-primary" /> {log.truckNumber}</CardTitle>
+                                 <CardDescription>
+                                     EPAP: <Badge variant="secondary">{log.epapNumber}</Badge> | Owner: <Badge variant="outline">{log.owner}</Badge>
+                                 </CardDescription>
+                            </div>
+                            <Badge variant={log.isLoaded ? "default" : isExpired ? "destructive" : log.isPreChecked ? "outline" : "secondary"} className="whitespace-nowrap flex-shrink-0">
+                            {log.isLoaded ? "Loaded" : isExpired ? "Pre-Check Expired" : log.isPreChecked ? "Pre-Checked" : "Pending Pre-Check"}
+                            </Badge>
                         </div>
-                    )}
-                     {isExpired && !log.isLoaded && (
-                        <div className="flex items-center text-red-600 dark:text-red-400 text-sm">
-                            <XCircle className="mr-2 h-4 w-4" /> Pre-check has expired. Cannot mark as loaded.
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                            <div className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Date Added:</strong> <span className="ml-1">{format(new Date(log.date), 'PPP')}</span></div>
+                            <div className="flex items-center"><Package className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Product:</strong> <span className="ml-1">{log.product}</span></div>
+                            <div className="flex items-center"><Droplet className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Quantity:</strong> <span className="ml-1">{log.quantity.toLocaleString()} L</span></div>
+                            <div className="flex items-center sm:col-span-2 lg:col-span-1"><Building className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Company:</strong> <span className="ml-1">{log.company}</span></div>
+                             <div className="flex items-center sm:col-span-2 lg:col-span-1"><User className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Owner:</strong> <span className="ml-1">{log.owner}</span></div>
+                             <div className="flex items-center sm:col-span-2 lg:col-span-1"><Warehouse className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Depot:</strong> <span className="ml-1">{log.depot}</span></div>
+                            {log.isPreChecked && log.preCheckDate && (
+                                <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Pre-Checked:</strong> <span className="ml-1">{format(new Date(log.preCheckDate), 'PPP HH:mm')}</span></div>
+                            )}
+                             {/* Display AT2O and BOL if loaded */}
+                            {log.isLoaded && log.at2oNumber && (
+                                 <div className="flex items-center"><FileText className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>AT2O No:</strong> <span className="ml-1">{log.at2oNumber}</span></div>
+                            )}
+                            {log.isLoaded && log.bolNumber && (
+                                <div className="flex items-center"><FileInput className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>BOL No:</strong> <span className="ml-1">{log.bolNumber}</span></div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-            </CardContent>
-            </Card>
-        )
-    })}
+                        {/* Show Countdown only if Pre-checked */}
+                        {log.isPreChecked && log.expiryDate && (
+                            <ExpiryCountdown
+                                expiryDate={new Date(log.expiryDate)}
+                                isLoaded={log.isLoaded}
+                                preCheckDate={log.preCheckDate ? new Date(log.preCheckDate) : null}
+                             />
+                        )}
+                         {!log.isPreChecked && !log.isLoaded && (
+                             <div className="flex items-center text-orange-600 dark:text-orange-400 pt-2 text-sm">
+                                <Hourglass className="mr-2 h-4 w-4" /> Awaiting pre-check information.
+                            </div>
+                         )}
+
+                        <div className="flex items-center gap-2 pt-3 border-t mt-4">
+                            {/* Mark as Pre-Checked Button */}
+                            {canMarkPreChecked && (
+                                 <MarkPreCheckedModal
+                                    logId={log.id}
+                                    truckNumber={log.truckNumber}
+                                    onConfirm={handleMarkPreChecked}
+                                    isLoading={isLoadingPreCheck}
+                                />
+                            )}
+
+                            {/* Mark as Loaded Button */}
+                            {canMarkLoaded && (
+                                <MarkLoadedModal
+                                    logId={log.id}
+                                    truckNumber={log.truckNumber}
+                                    onConfirm={handleMarkLoaded}
+                                    isLoading={isLoadingLoad}
+                                />
+                            )}
+                             {/* Display status messages */}
+                             {log.isLoaded && (
+                                <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Truck successfully loaded.
+                                </div>
+                            )}
+                             {isExpired && !log.isLoaded && (
+                                <div className="flex items-center text-red-600 dark:text-red-400 text-sm">
+                                    <XCircle className="mr-2 h-4 w-4" /> Pre-check has expired. Cannot mark as loaded.
+                                </div>
+                            )}
+                        </div>
+
+                    </CardContent>
+                </Card>
+            )
+        })}
     </div>
   );
 }
