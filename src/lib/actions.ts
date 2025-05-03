@@ -26,6 +26,9 @@ export async function addTruckLogAction(data: AddTruckLogInput): Promise<TruckLo
     if (!data.owner) {
         return { error: "Owner is required." };
     }
+    if (!data.depot) {
+        return { error: "Depot is required." };
+    }
 
 
     const newLog: TruckLog = {
@@ -36,6 +39,7 @@ export async function addTruckLogAction(data: AddTruckLogInput): Promise<TruckLo
       quantity: data.quantity,
       company: data.company,
       owner: data.owner, // Added owner
+      depot: data.depot, // Added depot
       epapNumber: data.epapNumber, // Still store epapNumber itself
       isPreChecked: false, // Default to not pre-checked
       preCheckDate: null, // Default to null
@@ -206,6 +210,7 @@ export async function exportTruckLogsAction(): Promise<{ success: boolean; messa
        'EPAP Number': log.epapNumber, // Use EPAP as primary ID now
        'Truck Number': log.truckNumber,
        'Owner': log.owner, // Added Owner
+       'Depot': log.depot, // Added Depot
        'Date Added': log.date ? new Date(log.date).toLocaleString() : 'N/A',
        'Product': log.product,
        'Quantity (L)': log.quantity,

@@ -6,6 +6,7 @@ export interface TruckLog {
   quantity: number; // Added quantity field
   company: string;
   owner: string; // Added owner field
+  depot: string; // Added depot field
   epapNumber: string; // EPAP number serves as the unique permit ID
   isPreChecked: boolean; // Status if pre-checked
   preCheckDate: Date | null; // Date when pre-check was done, null if not pre-checked
@@ -23,7 +24,8 @@ export type AddTruckLogInput = Pick<TruckLog,
   'product' |
   'quantity' |
   'company' |
-  'owner' // Added owner
+  'owner' | // Added owner
+  'depot' // Added depot
 >;
 
 

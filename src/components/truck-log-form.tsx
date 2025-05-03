@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from "date-fns";
-import { CalendarIcon, Truck, Package, Building, Hash, Droplet, FileText, User } from 'lucide-react'; // Added User icon
+import { CalendarIcon, Truck, Package, Building, Hash, Droplet, FileText, User, Warehouse } from 'lucide-react'; // Added User, Warehouse icons
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,7 @@ const formSchema = z.object({
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'), // Coerce to number and validate
   company: z.string().min(1, 'Company name is required'),
   owner: z.string().min(1, 'Owner name is required'), // Added owner field
+  depot: z.string().min(1, 'Depot name is required'), // Added depot field
 });
 
 type TruckLogFormValues = z.infer<typeof formSchema>;
@@ -69,6 +70,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
       quantity: 0,
       company: '',
       owner: '', // Default owner
+      depot: '', // Default depot
     },
   });
 
@@ -85,6 +87,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
             quantity: values.quantity,
             company: values.company,
             owner: values.owner, // Include owner
+            depot: values.depot, // Include depot
          };
 
          const result = await addTruckLogAction(payload);
@@ -162,6 +165,21 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
                 <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4" /> Owner</FormLabel>
                 <FormControl>
                   <Input placeholder="Owner's name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Depot */}
+          <FormField
+            control={form.control}
+            name="depot"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center"><Warehouse className="mr-2 h-4 w-4" /> Depot</FormLabel>
+                <FormControl>
+                  <Input placeholder="Depot name" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

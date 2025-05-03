@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Truck, Package, Building, CalendarDays, Clock, CheckCircle, XCircle, Hourglass, AlertTriangle, Loader, Droplet, FileText, FileInput, ClipboardCheck, CalendarIcon, User } from 'lucide-react'; // Added User icon
+import { Truck, Package, Building, CalendarDays, Clock, CheckCircle, XCircle, Hourglass, AlertTriangle, Loader, Droplet, FileText, FileInput, ClipboardCheck, CalendarIcon, User, Warehouse } from 'lucide-react'; // Added User, Warehouse icons
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from '@/components/ui/calendar';
@@ -461,6 +461,7 @@ export function TruckLogList({ initialLogs }: TruckLogListProps) {
                     <div className="flex items-center"><Droplet className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Quantity:</strong> <span className="ml-1">{log.quantity.toLocaleString()} L</span></div>
                     <div className="flex items-center sm:col-span-2 lg:col-span-1"><Building className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Company:</strong> <span className="ml-1">{log.company}</span></div>
                      <div className="flex items-center sm:col-span-2 lg:col-span-1"><User className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Owner:</strong> <span className="ml-1">{log.owner}</span></div>
+                     <div className="flex items-center sm:col-span-2 lg:col-span-1"><Warehouse className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Depot:</strong> <span className="ml-1">{log.depot}</span></div>
                     {log.isPreChecked && log.preCheckDate && (
                         <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-muted-foreground" /> <strong>Pre-Checked:</strong> <span className="ml-1">{format(new Date(log.preCheckDate), 'PPP HH:mm')}</span></div>
                     )}
