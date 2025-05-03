@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { TruckLogForm } from '@/components/truck-log-form';
 import { TruckLogList } from '@/components/truck-log-list';
+import { POQuantityDisplay } from '@/components/po-quantity-display'; // Import Admin component
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Settings } from 'lucide-react'; // Added Settings icon
 import { useToast } from '@/hooks/use-toast';
 import { getTruckLogsAction, exportTruckLogsAction } from '@/lib/actions';
 import type { TruckLog } from '@/lib/types';
@@ -14,6 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 export default function Home() {
   const [logs, setLogs] = useState<TruckLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminMode, setIsAdminMode] = useState(false); // State to toggle admin components
   const { toast } = useToast();
 
   // Fetch initial logs on component mount
@@ -22,7 +24,7 @@ export default function Home() {
       setIsLoading(true);
       try {
         const fetchedLogs = await getTruckLogsAction();
-         // Ensure dates are Date objects (important if fetching from API/DB later)
+         // Ensure dates are Date objects (already handled in action, but good practice)
          const processedLogs = fetchedLogs.map(log => ({
              ...log,
              date: new Date(log.date),
@@ -53,7 +55,8 @@ export default function Home() {
           preCheckDate: newLog.preCheckDate ? new Date(newLog.preCheckDate) : null,
           expiryDate: newLog.expiryDate ? new Date(newLog.expiryDate) : null,
       };
-     setLogs(prevLogs => [processedLog, ...prevLogs]);
+     // Add to the beginning of the list and ensure it's sorted if needed (e.g., by date descending)
+     setLogs(prevLogs => [processedLog, ...prevLogs].sort((a, b) => b.date.getTime() - a.date.getTime()));
    };
 
   const handleExport = async () => {
@@ -77,6 +80,11 @@ export default function Home() {
             </div>
              {/* Add navigation items here if needed */}
             <div className="flex flex-1 items-center justify-end space-x-2">
+                 {/* Admin Mode Toggle Button */}
+                 <Button variant="ghost" size="icon" onClick={() => setIsAdminMode(!isAdminMode)} title={isAdminMode ? "Exit Admin Mode" : "Enter Admin Mode"}>
+                     <Settings className={`h-5 w-5 ${isAdminMode ? 'text-accent' : ''}`} />
+                     <span className="sr-only">{isAdminMode ? "Exit Admin Mode" : "Enter Admin Mode"}</span>
+                 </Button>
                  <Button variant="outline" size="sm" onClick={handleExport} >
                    <Download className="mr-2 h-4 w-4" />
                    Export Excel
@@ -86,13 +94,19 @@ export default function Home() {
          </div>
       </header>
 
-       <main className="container mx-auto p-4 md:p-8">
-            <section className="mb-8 p-6 border rounded-lg shadow-sm bg-card">
+       <main className="container mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section className="lg:col-span-1 p-6 border rounded-lg shadow-sm bg-card h-fit">
                  <h2 className="text-2xl font-semibold mb-4">Add New Truck Log</h2>
                  <TruckLogForm onLogAdded={handleLogAdded} />
             </section>
 
-            <section>
+            <section className="lg:col-span-2">
+                 {/* Conditionally render Admin PO Quantities */}
+                 {isAdminMode && (
+                     <div className="mb-8">
+                        <POQuantityDisplay />
+                     </div>
+                 )}
                  {isLoading ? (
                      <p>Loading logs...</p> // Replace with Skeleton loaders if desired
                  ) : (
@@ -108,7 +122,7 @@ export default function Home() {
            </p>
          </div>
        </footer>
-       <Toaster /> {/* Add Toaster component here */}
+       <Toaster /> {/* Ensure Toaster is present */}
     </div>
   );
 }
