@@ -5,11 +5,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from "date-fns";
-import { CalendarIcon, Truck, Package, Building, CalendarDays, CheckCircle, XCircle, Hash, Droplet, FileText } from 'lucide-react'; // Added icons
+import { CalendarIcon, Truck, Package, Building, Hash, Droplet, FileText } from 'lucide-react'; // Added/updated icons
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+// import { Checkbox } from '@/components/ui/checkbox'; // Removed Checkbox import
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -22,7 +22,7 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
+  // FormDescription, // Removed FormDescription import
   FormField,
   FormItem,
   FormLabel,
@@ -36,21 +36,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { addTruckLogAction } from '@/lib/actions';
 import { cn } from "@/lib/utils";
-import type { TruckLog } from '@/lib/types';
+import type { TruckLog, AddTruckLogInput } from '@/lib/types'; // Import specific types
 
-// Updated Zod schema
+// Updated Zod schema for adding a log (manual permit, no pre-check fields)
 const formSchema = z.object({
+  permitNumber: z.string().min(1, 'Permit number is required'), // Manual Permit Number
   truckNumber: z.string().min(1, 'Truck number is required'),
   date: z.date({ required_error: "Date is required." }),
   product: z.enum(['PMS', 'AGO'], { required_error: "Product is required." }), // Enum for product
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'), // Coerce to number and validate
   company: z.string().min(1, 'Company name is required'),
-  epraNumber: z.string().min(1, 'EPRA number is required'), // Added EPRA number
-  isPreChecked: z.boolean().default(false),
-  preCheckDate: z.date().optional().nullable(),
-}).refine(data => !data.isPreChecked || (data.isPreChecked && data.preCheckDate), {
-  message: "Pre-check date is required if pre-checked is selected",
-  path: ["preCheckDate"],
+  epapNumber: z.string().min(1, 'EPAP number is required'), // Changed from epraNumber
 });
 
 type TruckLogFormValues = z.infer<typeof formSchema>;
@@ -66,34 +62,29 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
   const form = useForm<TruckLogFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      permitNumber: '',
       truckNumber: '',
       date: new Date(),
       // product: undefined, // No default for select
       quantity: 0,
       company: '',
-      epraNumber: '',
-      isPreChecked: false,
-      preCheckDate: null,
+      epapNumber: '',
     },
   });
-
-  const isPreChecked = form.watch("isPreChecked");
 
    async function onSubmit(values: TruckLogFormValues) {
      setIsSubmitting(true);
      try {
          console.log("Submitting form values:", values);
-         // Explicitly create the payload matching the action's expectation
-         const payload = {
+         // Prepare payload matching AddTruckLogInput type
+         const payload: AddTruckLogInput = {
+            permitNumber: values.permitNumber,
             truckNumber: values.truckNumber,
             date: values.date,
             product: values.product,
             quantity: values.quantity,
             company: values.company,
-            epraNumber: values.epraNumber,
-            isPreChecked: values.isPreChecked,
-            preCheckDate: values.preCheckDate ? values.preCheckDate : null,
-            // Ensure all required fields for the action (excluding generated ones) are present
+            epapNumber: values.epapNumber,
          };
 
          const result = await addTruckLogAction(payload);
@@ -103,13 +94,13 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
          if ('error' in result) {
              toast({
                  variant: "destructive",
-                 title: "Error",
+                 title: "Error Adding Log",
                  description: result.error,
              });
          } else {
              toast({
                  title: "Success",
-                 description: `Permit ${result.permitNumber} generated for truck ${result.truckNumber}.`,
+                 description: `Log added for Permit ${result.permitNumber}.`,
              });
              onLogAdded(result); // Notify parent component
              form.reset(); // Reset form after successful submission
@@ -131,6 +122,22 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          {/* Permit Number (Manual Input) */}
+           <FormField
+              control={form.control}
+              name="permitNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center"><Hash className="mr-2 h-4 w-4" /> Permit Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter permit number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
           {/* Truck Number */}
           <FormField
             control={form.control}
@@ -152,7 +159,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                   <FormLabel className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4" /> Date</FormLabel>
+                   <FormLabel className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4" /> Date Added</FormLabel>
                    <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -220,7 +227,7 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
               <FormItem>
                 <FormLabel className="flex items-center"><Droplet className="mr-2 h-4 w-4" /> Quantity (Litres)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 10000" {...field} />
+                  <Input type="number" placeholder="e.g., 10000" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -242,129 +249,28 @@ export function TruckLogForm({ onLogAdded }: TruckLogFormProps) {
             )}
           />
 
-          {/* EPRA Number */}
+          {/* EPAP Number */}
           <FormField
             control={form.control}
-            name="epraNumber"
+            name="epapNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center"><FileText className="mr-2 h-4 w-4" /> EPRA Number</FormLabel>
+                <FormLabel className="flex items-center"><FileText className="mr-2 h-4 w-4" /> EPAP Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., EPRA/12345" {...field} />
+                  <Input placeholder="e.g., EPAP/12345" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* Removed Pre-check Checkbox and Date fields */}
 
-           {/* Pre-Checked Checkbox */}
-          <FormField
-            control={form.control}
-            name="isPreChecked"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 md:col-span-1 lg:col-span-3"> {/* Adjust span */}
-                 <FormControl>
-                    <Checkbox
-                    checked={field.value}
-                    onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        // Reset preCheckDate if unchecked
-                        if (!checked) {
-                         form.setValue("preCheckDate", null);
-                        }
-                     }}
-                    />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="flex items-center">
-                     {field.value ? <CheckCircle className="mr-2 h-4 w-4 text-green-500" /> : <XCircle className="mr-2 h-4 w-4 text-red-500" />}
-                    Pre-Checked
-                  </FormLabel>
-                  <FormDescription>
-                    Indicates if the truck has undergone pre-checking procedures.
-                  </FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
-
-           {/* Pre-Check Date (Conditional) */}
-            {isPreChecked && (
-                <FormField
-                    control={form.control}
-                    name="preCheckDate"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel className="flex items-center"><CalendarDays className="mr-2 h-4 w-4" /> Pre-Check Date & Time</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                {field.value ? (
-                                format(field.value, "PPP HH:mm") // Include time
-                                ) : (
-                                <span>Pick pre-check date & time</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                             <Calendar
-                                mode="single"
-                                selected={field.value || undefined}
-                                onSelect={(date) => {
-                                    // Set date, default time to now if not set yet
-                                    const selectedDate = date || new Date();
-                                    const currentTime = field.value || new Date();
-                                    const newDateTime = new Date(
-                                        selectedDate.getFullYear(),
-                                        selectedDate.getMonth(),
-                                        selectedDate.getDate(),
-                                        currentTime.getHours(),
-                                        currentTime.getMinutes()
-                                    );
-                                    field.onChange(newDateTime);
-                                }}
-                                disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                            />
-                            {/* Time Picker */}
-                            <div className="p-2 border-t flex justify-center gap-2">
-                                <Input
-                                    type="time"
-                                    value={field.value ? format(field.value, "HH:mm") : ""}
-                                    onChange={(e) => {
-                                        const [hours, minutes] = e.target.value.split(':').map(Number);
-                                        const currentVal = field.value || new Date(); // Use current date if no date picked yet
-                                        const newDate = new Date(currentVal);
-                                        newDate.setHours(hours, minutes);
-                                        field.onChange(newDate);
-                                    }}
-                                    className="w-auto"
-                                />
-                            </div>
-                        </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            )}
         </div>
 
 
-        <Button type="submit" className="w-full md:w-auto bg-accent hover:bg-accent/90" disabled={isSubmitting}>
-          {isSubmitting ? 'Generating Permit...' : 'Generate Permit & Add Log'}
+        <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+          {isSubmitting ? 'Adding Log...' : 'Add Truck Log'}
         </Button>
       </form>
     </Form>

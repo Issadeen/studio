@@ -24,13 +24,13 @@ export default function Home() {
       setIsLoading(true);
       try {
         const fetchedLogs = await getTruckLogsAction();
-         // Ensure dates are Date objects (already handled in action, but good practice)
+         // Ensure dates are Date objects and sort
          const processedLogs = fetchedLogs.map(log => ({
              ...log,
-             date: new Date(log.date),
+             date: new Date(log.date), // This is the date the log was ADDED
              preCheckDate: log.preCheckDate ? new Date(log.preCheckDate) : null,
              expiryDate: log.expiryDate ? new Date(log.expiryDate) : null,
-         }));
+         })).sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date added descending
         setLogs(processedLogs);
       } catch (error) {
         console.error("Failed to fetch logs:", error);
@@ -51,11 +51,12 @@ export default function Home() {
      // Ensure dates are Date objects when adding
       const processedLog = {
           ...newLog,
-          date: new Date(newLog.date),
+          date: new Date(newLog.date), // Date added
+          // These will be null initially when adding
           preCheckDate: newLog.preCheckDate ? new Date(newLog.preCheckDate) : null,
           expiryDate: newLog.expiryDate ? new Date(newLog.expiryDate) : null,
       };
-     // Add to the beginning of the list and ensure it's sorted if needed (e.g., by date descending)
+     // Add to the beginning of the list and re-sort by date added descending
      setLogs(prevLogs => [processedLog, ...prevLogs].sort((a, b) => b.date.getTime() - a.date.getTime()));
    };
 
@@ -110,6 +111,7 @@ export default function Home() {
                  {isLoading ? (
                      <p>Loading logs...</p> // Replace with Skeleton loaders if desired
                  ) : (
+                      // Pass the current logs state to TruckLogList
                      <TruckLogList initialLogs={logs} />
                  )}
             </section>
